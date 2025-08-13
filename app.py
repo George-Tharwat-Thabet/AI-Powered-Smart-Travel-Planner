@@ -10,15 +10,13 @@ import numpy as np
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
-# Import IBM Watsonx AI for traffic pattern analysis
-try:
-    from ibm_watsonx_ai.foundation_models import Model
-    from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
-    from ibm_watsonx_ai.foundation_models.utils.enums import DecodingMethods
-    watsonx_available = True
-except ImportError:
-    print("Warning: IBM Watsonx AI not available. AI analysis will be simulated.")
-    watsonx_available = False
+from ibm_watsonx_ai.foundation_models import Model
+from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
+from ibm_watsonx_ai.foundation_models.utils.enums import DecodingMethods
+watsonx_available = True
+# except ImportError:
+#     print("Warning: IBM Watsonx AI not available. AI analysis will be simulated.")
+#     watsonx_available = False
 
 # Define AI model training prompt
 AI_TRAINING_PROMPT = """
@@ -100,30 +98,30 @@ def static_files(path):
     return send_from_directory('.', path)
 
 # API Keys
-TOMTOM_API_KEY = os.getenv('TOMTOM_API_KEY')
-IBM_WATSONX_API_KEY = os.getenv('IBM_WATSONX_API_KEY')
+TOMTOM_API_KEY = "NMOmmbu9B2Dmtgf9xEvytuvKvrvzXb3U"
+IBM_WATSONX_API_KEY = "b5oYyF7lFa1WaEySvmQ6Gre0eMEpYxyuRHIbpP3MtCwP"
 
 # Initialize geocoder
 geolocator = Nominatim(user_agent="smart-travel-planner")
 
-# Initialize IBM Watsonx model if available
-if watsonx_available and IBM_WATSONX_API_KEY:
-    try:
-        # Using IBM Granite 3.3-8b-alora-uncertainty model for improved traffic analysis
-        # This model is specialized for uncertainty quantification and provides confidence scores
-        model = Model(
-            model_id="ibm-granite/granite-3.3-8b-alora-uncertainty",
-            credentials={
-                "apikey": IBM_WATSONX_API_KEY,
-                "url": "https://us-south.ml.cloud.ibm.com"
-            },
-            project_id="smart-travel-planner",
-            space_id="smart-travel-planner-space"
-        )
-        print("IBM Granite 3.3-8b-alora-uncertainty model initialized successfully")
-    except Exception as e:
-        print(f"Error initializing IBM Watsonx AI model: {e}")
-        watsonx_available = False
+# # Initialize IBM Watsonx model if available
+# if watsonx_available and IBM_WATSONX_API_KEY:
+#     try:
+#         # Using IBM Granite 3.3-8b-alora-uncertainty model for improved traffic analysis
+#         # This model is specialized for uncertainty quantification and provides confidence scores
+#         model = Model(
+#             model_id="ibm-granite/granite-3.3-8b-alora-uncertainty",
+#             credentials={
+#                 "apikey": IBM_WATSONX_API_KEY,
+#                 "url": "https://us-south.ml.cloud.ibm.com"
+#             },
+#             project_id="smart-travel-planner",
+#             space_id="smart-travel-planner-space"
+#         )
+#         print("IBM Granite 3.3-8b-alora-uncertainty model initialized successfully")
+#     except Exception as e:
+#         print(f"Error initializing IBM Watsonx AI model: {e}")
+#         watsonx_available = False
 
 @app.route('/api/geocode', methods=['POST'])
 def geocode_location():
@@ -321,16 +319,16 @@ def get_ai_analysis():
     if not all([origin, destination, origin_lat, origin_lon, dest_lat, dest_lon]):
         return jsonify({'error': 'Origin, destination, and coordinates are required'}), 400
     
-    try:
+    # try:
         # Get traffic data for the route
-        traffic_data = get_route_traffic_data(origin_lat, origin_lon, dest_lat, dest_lon)
-        
-        # Generate AI analysis using IBM Watsonx or simulation
-        analysis = generate_ai_analysis(origin, destination, traffic_data)
-        
-        return jsonify(analysis)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    traffic_data = get_route_traffic_data(origin_lat, origin_lon, dest_lat, dest_lon)
+    
+    # Generate AI analysis using IBM Watsonx or simulation
+    analysis = generate_ai_analysis(origin, destination, traffic_data)
+    
+    return jsonify(analysis)
+    # except Exception as e:
+    #     return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan-trip', methods=['POST'])
 def plan_trip():
@@ -601,8 +599,10 @@ def generate_ai_analysis(origin, destination, traffic_data):
     print(f"\n[AI ANALYSIS] Generating analysis for route: {origin} to {destination}")
     print(f"[AI ANALYSIS] Watsonx available: {watsonx_available}")
     print(f"[AI ANALYSIS] Model loaded: {'model' in globals()}")
+
     
-    if watsonx_available and 'model' in globals():
+    
+    if True :
         try:
             print(f"[AI ANALYSIS] Using IBM Watsonx AI for traffic analysis")
             # Prepare prompt for the AI model using the training prompt as a base
@@ -638,21 +638,69 @@ def generate_ai_analysis(origin, destination, traffic_data):
             # Combine system prompt and user prompt
             full_prompt = f"{system_prompt}\n\nUser Request:\n{user_prompt}"
             
-            # Generate response from the AI model with improved parameters for the Granite model
-            params = {
-                GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
-                GenParams.MAX_NEW_TOKENS: 800,  # Increased token limit for more detailed analysis
-                GenParams.MIN_NEW_TOKENS: 200,
-                GenParams.TEMPERATURE: 0.5,     # Lower temperature for more focused responses
-                GenParams.TOP_P: 0.9,           # Added top_p parameter for better text quality
-                GenParams.REPETITION_PENALTY: 1.1  # Added to reduce repetition in responses
+            # # Generate response from the AI model with improved parameters for the Granite model
+            # params = {
+            #     GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
+            #     GenParams.MAX_NEW_TOKENS: 800,  # Increased token limit for more detailed analysis
+            #     GenParams.MIN_NEW_TOKENS: 200,
+            #     GenParams.TEMPERATURE: 0.5,     # Lower temperature for more focused responses
+            #     GenParams.TOP_P: 0.9,           # Added top_p parameter for better text quality
+            #     GenParams.REPETITION_PENALTY: 1.1  # Added to reduce repetition in responses
+            # }
+            
+            # print(f"[AI ANALYSIS] Sending prompt to IBM Watsonx AI model")
+            # print(f"[AI ANALYSIS] Prompt length: {len(full_prompt)} characters")
+            
+            # response = model.generate(prompt=full_prompt, params=params)
+            # ai_content = response.generated_text
+
+            import requests
+
+            url = "https://us-south.ml.cloud.ibm.com/ml/v1/text/chat?version=2023-05-29"
+
+            body = {
+            "messages": [{"role":"system",
+                            "content":"""You always answer the questions with markdown formatting using GitHub syntax. 
+                            The markdown formatting you support: headings, bold, italic, links, tables, lists, code blocks, and blockquotes. 
+                            You must omit that you answer the questions with markdown.
+                            \n\nAny HTML tags must be wrapped in block quotes, for example ```<html>```.
+                            You will be penalized for not rendering code in block quotes.
+                            \n\nWhen returning code blocks, specify language.
+                            \n\nYou are a helpful, respectful and honest assistant. 
+                            Always answer as helpfully as possible, while being safe. 
+                            \nYour answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content.
+                            Please ensure that your responses are socially unbiased and positive in nature.
+                            \n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct.
+                            If you don'\''t know the answer to a question, please don'\''t share false information."""},
+                            {"role":"user","content":[{"type":"text","text":full_prompt}]}],
+            "project_id": "6384f8f4-0e9f-451e-8752-dd5267d735be",
+            "model_id": "meta-llama/llama-3-3-70b-instruct",
+            "frequency_penalty": 0,
+            "max_tokens": 2000,
+            "presence_penalty": 0,
+            "temperature": 0,
+            "top_p": 1
             }
-            
-            print(f"[AI ANALYSIS] Sending prompt to IBM Watsonx AI model")
-            print(f"[AI ANALYSIS] Prompt length: {len(full_prompt)} characters")
-            
-            response = model.generate(prompt=full_prompt, params=params)
-            ai_content = response.generated_text
+
+            access_token = "eyJraWQiOiIyMDE5MDcyNCIsImFsZyI6IlJTMjU2In0.eyJpYW1faWQiOiJJQk1pZC02OTQwMDBJWDQ5IiwiaWQiOiJJQk1pZC02OTQwMDBJWDQ5IiwicmVhbG1pZCI6IklCTWlkIiwianRpIjoiYmM4YjU2MjctNzdmOC00NmJhLTk1ZDAtNThlMGMxZmY0MTUyIiwiaWRlbnRpZmllciI6IjY5NDAwMElYNDkiLCJnaXZlbl9uYW1lIjoiR2VvcmdlIiwiZmFtaWx5X25hbWUiOiJUaGFyd2F0IiwibmFtZSI6Ikdlb3JnZSBUaGFyd2F0IiwiZW1haWwiOiJnZW9yZ2V0aGFyd2F0Lm9mZmljaWFsQGdtYWlsLmNvbSIsInN1YiI6Imdlb3JnZXRoYXJ3YXQub2ZmaWNpYWxAZ21haWwuY29tIiwiYXV0aG4iOnsic3ViIjoiZ2VvcmdldGhhcndhdC5vZmZpY2lhbEBnbWFpbC5jb20iLCJpYW1faWQiOiJJQk1pZC02OTQwMDBJWDQ5IiwibmFtZSI6Ikdlb3JnZSBUaGFyd2F0IiwiZ2l2ZW5fbmFtZSI6Ikdlb3JnZSIsImZhbWlseV9uYW1lIjoiVGhhcndhdCIsImVtYWlsIjoiZ2VvcmdldGhhcndhdC5vZmZpY2lhbEBnbWFpbC5jb20ifSwiYWNjb3VudCI6eyJ2YWxpZCI6dHJ1ZSwiYnNzIjoiNTI0MDE1YzVjY2RhNDRmMGIzYTQ4YTcxMTQwMjk2NTQiLCJpbXNfdXNlcl9pZCI6IjE0Mjg3NzgzIiwiZnJvemVuIjp0cnVlLCJpbXMiOiIzMDAwODIwIn0sImlhdCI6MTc1NTExMDc0OCwiZXhwIjoxNzU1MTE0MzQ4LCJpc3MiOiJodHRwczovL2lhbS5jbG91ZC5pYm0uY29tL2lkZW50aXR5IiwiZ3JhbnRfdHlwZSI6InVybjppYm06cGFyYW1zOm9hdXRoOmdyYW50LXR5cGU6YXBpa2V5Iiwic2NvcGUiOiJpYm0gb3BlbmlkIiwiY2xpZW50X2lkIjoiZGVmYXVsdCIsImFjciI6MSwiYW1yIjpbInB3ZCJdfQ.OJs5AHsUDQgz1Mz6-RsI_qbiLgOMsq-W02xxqRtmtNIa7rOkzfbDpfxu8mKDh3Gpj8MIoY6UVrCGnOetKtOwyca0WmhR3BWQCRhtwx2i03KPDOUStMZUkn5dbnMUxTgr6Mdqp5uabv10RsaPJ1xCkryNdqCuYOvYR77jJBblke9EdUj4jPBp-2P2S_w3WHo7HgTi_1eQymIjeYauWkNcQI3l7JoQQyh0JuMi3S_GJao_uy_40EBRSXDtiKSAEkZbKcteF6hAnudKRs6esVXbpDQF7qHIMur0nOIMELc0GB-gbRSLVOQQqVCDSaGj418sGNDep591rl2bZYIaU_TfJQ"
+
+            headers = { 
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer"+" "+access_token
+            }
+
+            response = requests.post(
+            url,
+            headers=headers,
+            json=body
+            )
+
+            if response.status_code != 200:
+                raise Exception("Non-200 response: " + str(response.text))
+
+            ai_response = response.json()
+            ai_content = ai_response['choices'][0]['message']['content']
             
             print(f"[AI ANALYSIS] Received response from IBM Watsonx AI")
             print(f"[AI ANALYSIS] Response length: {len(ai_content)} characters")
