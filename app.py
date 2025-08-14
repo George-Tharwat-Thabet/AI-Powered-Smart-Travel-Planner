@@ -50,8 +50,49 @@ Your task is to analyze traffic data and provide insights on the following aspec
    - Account for seasonal variations and special events
 
 Your responses should be detailed, accurate, and formatted in a way that's easy for travelers to understand.
-Use HTML formatting for web display with appropriate sections, highlights for important information,
-and clear visual indicators for traffic density levels.
+Use the following HTML structure for your response to match the frontend display:
+
+```html
+<p><strong>AI-powered analysis of the route from [ORIGIN] to [DESTINATION]:</strong> 
+Our system has analyzed real-time traffic data, including road sensors and satellite imagery, 
+to provide the most accurate forecast. Below is a summary of vehicle density across key segments of your journey.</p>
+
+<ul class="density-analysis">
+    <li>
+        <div class="analysis-item">
+            <span class="area-name">Major Intersections</span>
+            <p class="area-description">[DESCRIPTION BASED ON DENSITY LEVEL]</p>
+        </div>
+        <span class="density-value [low/medium/high]">[Low/Medium/High]</span>
+    </li>
+    <li>
+        <div class="analysis-item">
+            <span class="area-name">Highway Segments</span>
+            <p class="area-description">[DESCRIPTION BASED ON DENSITY LEVEL]</p>
+        </div>
+        <span class="density-value [low/medium/high]">[Low/Medium/High]</span>
+    </li>
+    <li>
+        <div class="analysis-item">
+            <span class="area-name">Urban Streets</span>
+            <p class="area-description">[DESCRIPTION BASED ON DENSITY LEVEL]</p>
+        </div>
+        <span class="density-value [low/medium/high]">[Low/Medium/High]</span>
+    </li>
+</ul>
+
+<h4>Traffic Incidents</h4>
+<ul>
+    <li>[INCIDENT DESCRIPTION]</li>
+    <!-- Add more incidents if available -->
+</ul>
+
+<h4>Recommended Travel Times</h4>
+<ul>
+    <li>[TIME] - [REASON]</li>
+    <!-- Add more recommended times -->
+</ul>
+```
 
 Example input data structure:
 {"origin": "Mumbai, Maharashtra", "destination": "Pune, Maharashtra", "traffic_data": {...}}

@@ -162,26 +162,6 @@ class AIAnalyzer:
                     density_levels['Urban Streets'] = 'High'
         
         # Generate HTML content
-        incident_html = ""
-        if incidents:
-            incident_html = "<h4>Traffic Incidents</h4><ul>"
-            for incident in incidents[:3]:  # Limit to 3 incidents
-                incident_html += f"<li>{incident.get('description', 'Unknown incident')}</li>"
-            incident_html += "</ul>"
-        
-        # Find optimal travel times
-        optimal_times_html = "<h4>Recommended Travel Times</h4><ul>"
-        optimal_times = [
-            {"hour": 3, "period": "AM", "reason": "Minimal traffic during early morning hours"},
-            {"hour": 10, "period": "AM", "reason": "After morning rush hour"},
-            {"hour": 1, "period": "PM", "reason": "Early afternoon lull"},
-            {"hour": 9, "period": "PM", "reason": "Evening traffic has subsided"}
-        ]
-        
-        for time in optimal_times:
-            optimal_times_html += f"<li>{time['hour']}:00 {time['period']} - {time['reason']}</li>"
-        optimal_times_html += "</ul>"
-        
         html_content = f"""
         <p><strong>AI-powered analysis of the route from {origin} to {destination}:</strong> 
         Our system has analyzed real-time traffic data, including road sensors and satellite imagery, 
@@ -190,6 +170,7 @@ class AIAnalyzer:
         <ul class="density-analysis">
         """
         
+        # Add density analysis for each area
         for area, level in density_levels.items():
             level_class = level.lower()
             description = ""
@@ -210,7 +191,27 @@ class AIAnalyzer:
             </li>
             """
         
-        html_content += f"</ul>{incident_html}{optimal_times_html}"
+        html_content += "</ul>"
+        
+        # Add incident information if available
+        if incidents:
+            html_content += "<h4>Traffic Incidents</h4><ul>"
+            for incident in incidents[:3]:  # Limit to 3 incidents
+                html_content += f"<li>{incident.get('description', 'Unknown incident')}</li>"
+            html_content += "</ul>"
+        
+        # Add recommended travel times
+        html_content += "<h4>Recommended Travel Times</h4><ul>"
+        optimal_times = [
+            {"hour": 3, "period": "AM", "reason": "Minimal traffic during early morning hours"},
+            {"hour": 10, "period": "AM", "reason": "After morning rush hour"},
+            {"hour": 1, "period": "PM", "reason": "Early afternoon lull"},
+            {"hour": 9, "period": "PM", "reason": "Evening traffic has subsided"}
+        ]
+        
+        for time in optimal_times:
+            html_content += f"<li>{time['hour']}:00 {time['period']} - {time['reason']}</li>"
+        html_content += "</ul>"
         
         return {
             'html_content': html_content,

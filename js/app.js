@@ -1,5 +1,11 @@
 // Smart Travel Planner JavaScript
 
+// Global variables for map markers and route lines
+let originMarker = null;
+let destinationMarker = null;
+let routeLine = null;
+let routeOutline = null;
+
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Get DOM elements
@@ -15,6 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize autocomplete for Indian locations
     initializeAutocomplete(originInput);
     initializeAutocomplete(destinationInput);
+    
+    // Initialize the map when the page loads
+    // Global variable to track if map is already initialized
+    window.mapInitialized = false;
+    updateMap();
     
     // Add event listener to the Plan My Trip button
     planTripBtn.addEventListener('click', handlePlanTrip);
@@ -32,6 +43,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!origin || !destination) {
             alert('Please enter both origin and destination');
             return;
+        }
+        
+        // If map is already initialized with markers from clicking, use those instead of reinitializing
+        if (window.mapInitialized && window.leafletMap) {
+            // We already have markers set by clicking on the map or from previous searches
+            console.log('Using existing map');
+            
+            // If we don't have markers yet, we'll need to geocode the addresses and set markers
+            if (!originMarker || !destinationMarker) {
+                // This will be handled by the backend response
+                console.log('Need to set markers from addresses');
+            }
         }
         
         // Log the values to the console (for development purposes)
@@ -155,6 +178,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add AI source information to the analysis
         let aiContent = data.aiAnalysis;
         
+        // Check if aiAnalysis is HTML content or plain text
+        if (aiContent && !aiContent.startsWith('<')) {
+            // If it's plain text, wrap it in paragraph tags
+            aiContent = `<p>${aiContent}</p>`;
+        }
+        
         // Add AI source information at the end of the analysis
         if (data.aiSource) {
             const aiSourceInfo = `
@@ -172,6 +201,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         aiAnalysisElement.innerHTML = aiContent;
+        
+        // Ensure density indicators are properly displayed
+        const densityLevels = document.querySelectorAll('.density-level span');
+        if (densityLevels.length > 0) {
+            densityLevels.forEach(span => {
+                span.classList.add('pulse');
+            });
+        }
     }
     
     /**
@@ -227,37 +264,164 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
+     * Helper function to get a random traffic color
+     * @returns {string} - Random traffic color (hex code)
+     */
+    function getRandomTrafficColor() {
+        const trafficColors = [
+            '#4CAF50', // Green - free flow
+            '#FFC107', // Amber - slow
+            '#FF9800', // Orange - queuing
+            '#F44336'  // Red - stationary
+        ];
+        const randomIndex = Math.floor(Math.random() * trafficColors.length);
+        return trafficColors[randomIndex];
+    }
+    
+    /**
      * Function to update the map with the route
-     * @param {Array} routePoints - The route coordinates
+     * @param {Array} routePoints - The route coordinates (optional)
      */
     function updateMap(routePoints) {
         // Get the map container element
         const mapContainer = document.getElementById('map');
         
-        // Clear any existing map
-        mapContainer.innerHTML = '';
+        // Check if we have a map already
+        if (window.mapInitialized && window.leafletMap) {
+            // If we have route points, update the map with them
+            if (routePoints && routePoints.length > 0) {
+                // Clear existing route lines if they exist
+                if (routeLine) window.leafletMap.removeLayer(routeLine);
+                if (routeOutline) window.leafletMap.removeLayer(routeOutline);
+                
+                // Update markers and route based on new route points
+                const firstPoint = routePoints[0];
+                const lastPoint = routePoints[routePoints.length - 1];
+                
+                // Update or create markers
+                updateOrCreateMarkers(firstPoint, lastPoint);
+                
+                // Draw route line between points
+                drawRouteFromPoints(routePoints);
+                
+                // Fit map to show the entire route
+                const bounds = L.latLngBounds(routePoints.map(point => [point.lat, point.lon]));
+                window.leafletMap.fitBounds(bounds, { padding: [50, 50] });
+                
+                return;
+            }
+            return; // Keep existing map if no route points
+        }
         
-        // Check if we have route points
+        // If we reach here, we need to initialize the map
         if (!routePoints || routePoints.length === 0) {
-            console.error('No route points provided');
+            // Initialize empty map that allows user selection
+            initializeMap();
             return;
         }
         
-        // Initialize the map with Leaflet
+        // Initialize the map with Leaflet and route points
         initializeMap(routePoints);
     }
     
     /**
-     * Initialize the map with Leaflet
+     * Helper function to update or create markers based on route points
+     * @param {Object} firstPoint - The first point in the route
+     * @param {Object} lastPoint - The last point in the route
+     */
+    function updateOrCreateMarkers(firstPoint, lastPoint) {
+        // Remove existing markers if they exist
+        if (originMarker) window.leafletMap.removeLayer(originMarker);
+        if (destinationMarker) window.leafletMap.removeLayer(destinationMarker);
+        
+        // Create origin marker
+        const originIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // Create destination marker
+        const destinationIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // Set origin marker
+        originMarker = L.marker([firstPoint.lat, firstPoint.lon], {icon: originIcon})
+            .addTo(window.leafletMap)
+            .bindPopup("Origin: " + (firstPoint.name || 'Selected location'))
+            .openPopup();
+        
+        // Set destination marker
+        destinationMarker = L.marker([lastPoint.lat, lastPoint.lon], {icon: destinationIcon})
+            .addTo(window.leafletMap)
+            .bindPopup("Destination: " + (lastPoint.name || 'Selected location'))
+            .openPopup();
+    }
+    
+    /**
+     * Helper function to draw route line from route points
      * @param {Array} routePoints - The route coordinates
      */
-    function initializeMap(routePoints) {
-        // Calculate the center of the route
-        const firstPoint = routePoints[0];
-        const lastPoint = routePoints[routePoints.length - 1];
+    function drawRouteFromPoints(routePoints) {
+        // Convert route points to LatLng objects
+        const routeCoordinates = routePoints.map(point => [point.lat, point.lon]);
+        
+        // Create route outline (thicker, black line underneath for visual effect)
+        routeOutline = L.polyline(routeCoordinates, {
+            color: 'black',
+            weight: 8,
+            opacity: 0.5
+        }).addTo(window.leafletMap);
+        
+        // Create route line with traffic-based coloring
+        routeLine = L.polyline(routeCoordinates, {
+            color: getRandomTrafficColor(),
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '10, 10',
+            lineCap: 'round'
+        }).addTo(window.leafletMap);
+    }
+    
+    /**
+     * Initialize the map with Leaflet
+     * @param {Array} routePoints - The route coordinates (optional)
+     */
+    function initializeMap(routePoints = null) {
+        // Set default center of India if no route points
+        let mapCenter = [20.5937, 78.9629]; // Center of India
+        let zoomLevel = 5;
+        
+        // If route points are provided, use them
+        if (routePoints && routePoints.length > 0) {
+            const firstPoint = routePoints[0];
+            mapCenter = [firstPoint.lat, firstPoint.lon];
+            zoomLevel = 10;
+        }
+        
+        // Check if map is already initialized
+        if (window.mapInitialized && window.leafletMap) {
+            console.log('Map already initialized, updating view');
+            window.leafletMap.setView(mapCenter, zoomLevel);
+            return window.leafletMap;
+        }
         
         // Initialize the map with Leaflet
-        const map = L.map('map').setView([firstPoint.lat, firstPoint.lon], 10);
+        console.log('Initializing new map');
+        window.leafletMap = L.map('map').setView(mapCenter, zoomLevel);
+        window.mapInitialized = true;
+        
+        // Store map reference for later use
+        const map = window.leafletMap;
         
         // Add OpenStreetMap tile layer with CORS-friendly provider
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -266,40 +430,6 @@ document.addEventListener('DOMContentLoaded', function() {
             crossOrigin: true,
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-        
-        // Add click event to show coordinates
-        const coordInfo = L.control({position: 'bottomleft'});
-        coordInfo.onAdd = function() {
-            const div = L.DomUtil.create('div', 'coordinate-info');
-            div.innerHTML = 'Click on map to see coordinates';
-            div.style.backgroundColor = 'white';
-            div.style.padding = '5px';
-            div.style.borderRadius = '5px';
-            div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
-            return div;
-        };
-        coordInfo.addTo(map);
-        
-        map.on('click', function(e) {
-            coordInfo.getContainer().innerHTML = 
-                `<b>Latitude:</b> ${e.latlng.lat.toFixed(5)}<br>
-                 <b>Longitude:</b> ${e.latlng.lng.toFixed(5)}`;
-        });
-        
-        // Add traffic flow visualization controls
-        const trafficFlowControl = document.createElement('div');
-        trafficFlowControl.className = 'traffic-flow-control';
-        trafficFlowControl.innerHTML = `
-            <div class="traffic-legend">
-                <h4>Traffic Flow</h4>
-                <div class="flow-item"><span class="flow-color free-flow"></span>Free flow</div>
-                <div class="flow-item"><span class="flow-color slow"></span>Slow</div>
-                <div class="flow-item"><span class="flow-color queuing"></span>Queuing</div>
-                <div class="flow-item"><span class="flow-color stationary"></span>Stationary</div>
-                <div class="flow-item"><span class="flow-color closed"></span>Road closed</div>
-            </div>
-        `;
-        document.querySelector('.map-container').appendChild(trafficFlowControl);
         
         // Create custom icons for origin and destination
         const originIcon = L.icon({
@@ -320,65 +450,308 @@ document.addEventListener('DOMContentLoaded', function() {
             shadowSize: [41, 41]
         });
         
-        // Add markers for origin and destination
-        const originMarker = L.marker([firstPoint.lat, firstPoint.lon], {icon: originIcon})
-            .addTo(map)
-            .bindPopup("Origin")
-            .openPopup();
+        // Use global selection mode variable
+        let selectionMode = 'origin'; // Default selection mode
         
-        const destinationMarker = L.marker([lastPoint.lat, lastPoint.lon], {icon: destinationIcon})
-            .addTo(map)
-            .bindPopup("Destination");
+        // Add click event to show coordinates and set markers
+        const coordInfo = L.control({position: 'bottomleft'});
+        coordInfo.onAdd = function() {
+            const div = L.DomUtil.create('div', 'coordinate-info');
+            div.innerHTML = 'Click on map to set origin and destination points';
+            div.style.backgroundColor = 'white';
+            div.style.padding = '5px';
+            div.style.borderRadius = '5px';
+            div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+            return div;
+        };
+        coordInfo.addTo(map);
         
-        // Create a route line
-        const routeCoordinates = routePoints.map(point => [point.lat, point.lon]);
+        // Add selection mode toggle control
+        const selectionControl = L.control({position: 'topright'});
+        selectionControl.onAdd = function() {
+            const div = L.DomUtil.create('div', 'selection-control');
+            div.innerHTML = `
+                <div class="selection-toggle">
+                    <div class="toggle-label">Selection Mode:</div>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" data-mode="origin">Origin</button>
+                        <button class="toggle-btn" data-mode="destination">Destination</button>
+                    </div>
+                </div>
+            `;
+            div.style.backgroundColor = 'white';
+            div.style.padding = '10px';
+            div.style.borderRadius = '5px';
+            div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+            
+            // Add event listeners to toggle buttons
+            setTimeout(() => {
+                const buttons = div.querySelectorAll('.toggle-btn');
+                buttons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        // Remove active class from all buttons
+                        buttons.forEach(btn => btn.classList.remove('active'));
+                        // Add active class to clicked button
+                        this.classList.add('active');
+                        // Set selection mode
+                        selectionMode = this.getAttribute('data-mode');
+                    });
+                });
+            }, 0);
+            
+            return div;
+        };
+        selectionControl.addTo(map);
         
-        // Add route outline (shadow effect)
-        const routeOutline = L.polyline(routeCoordinates, {
-            color: '#000',
-            weight: 12,
-            opacity: 0.4
-        }).addTo(map);
-        
-        // Add the route to the map with popup showing distance
-        const routeLine = L.polyline(routeCoordinates, {
-            color: '#800080', // Purple
-            weight: 8,
-            dashArray: '10, 10',
-            dashOffset: '0'
-        }).addTo(map);
-        
-        // Calculate approximate distance in kilometers
-        let totalDistance = 0;
-        for (let i = 0; i < routeCoordinates.length - 1; i++) {
-            const p1 = L.latLng(routeCoordinates[i]);
-            const p2 = L.latLng(routeCoordinates[i + 1]);
-            totalDistance += p1.distanceTo(p2);
+        // Function to get address from coordinates using reverse geocoding
+        async function getAddressFromCoordinates(lat, lng) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+                const data = await response.json();
+                return data.display_name || 'Unknown location';
+            } catch (error) {
+                console.error('Error getting address:', error);
+                return 'Unknown location';
+            }
         }
         
-        // Convert to kilometers and round to one decimal place
-        const distanceInKm = (totalDistance / 1000).toFixed(1);
+        // Click event handler for the map
+        map.on('click', async function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            // Update coordinate info
+            coordInfo.getContainer().innerHTML = 
+                `<b>Latitude:</b> ${lat.toFixed(5)}<br>
+                 <b>Longitude:</b> ${lng.toFixed(5)}`;
+            
+            // Get address from coordinates
+            const address = await getAddressFromCoordinates(lat, lng);
+            
+            if (selectionMode === 'origin') {
+                // Remove existing origin marker if it exists
+                if (originMarker) {
+                    map.removeLayer(originMarker);
+                }
+                
+                // Set origin marker
+                originMarker = L.marker([lat, lng], {icon: originIcon})
+                    .addTo(map)
+                    .bindPopup("Origin: " + address)
+                    .openPopup();
+                
+                // Update origin input field without triggering map reinitialization
+                const originInput = document.getElementById('origin');
+                originInput.value = address;
+                
+                // Draw route if both markers exist
+                if (destinationMarker) {
+                    // Remove existing route line
+                    if (routeLine) map.removeLayer(routeLine);
+                    if (routeOutline) map.removeLayer(routeOutline);
+                    
+                    // Draw new route line
+                    drawRouteLine(originMarker.getLatLng(), destinationMarker.getLatLng());
+                }
+            } else if (selectionMode === 'destination') {
+                // Remove existing destination marker if it exists
+                if (destinationMarker) {
+                    map.removeLayer(destinationMarker);
+                }
+                
+                // Set destination marker
+                destinationMarker = L.marker([lat, lng], {icon: destinationIcon})
+                    .addTo(map)
+                    .bindPopup("Destination: " + address)
+                    .openPopup();
+                
+                // Update destination input field without triggering map reinitialization
+                const destinationInput = document.getElementById('destination');
+                destinationInput.value = address;
+                
+                // Draw route if both markers exist
+                if (originMarker) {
+                    // Remove existing route line
+                    if (routeLine) map.removeLayer(routeLine);
+                    if (routeOutline) map.removeLayer(routeOutline);
+                    
+                    // Draw new route line
+                    drawRouteLine(originMarker.getLatLng(), destinationMarker.getLatLng());
+                    
+                    // Trigger trip planning with the selected coordinates
+                    planTripWithCoordinates(originMarker.getLatLng(), destinationMarker.getLatLng());
+                }
+            }
+        });
         
-        // Add popup to the middle of the route
-        const midPointIndex = Math.floor(routeCoordinates.length / 2);
-        const midPoint = routeCoordinates[midPointIndex];
-        L.popup()
-            .setLatLng(midPoint)
-            .setContent(`<b>Distance:</b> ${distanceInKm} km`)
-            .openOn(map);
-        
-        // Animate the dash pattern for a moving effect
-        let dashOffset = 0;
-        function animateDashArray() {
-            dashOffset = (dashOffset + 1) % 20;
-            routeLine.setStyle({ dashOffset: String(dashOffset) });
-            requestAnimationFrame(animateDashArray);
+        // Function to draw route line between two points
+        function drawRouteLine(originLatLng, destLatLng) {
+            const routeCoordinates = [
+                [originLatLng.lat, originLatLng.lng],
+                [destLatLng.lat, destLatLng.lng]
+            ];
+            
+            // Add route outline (shadow effect)
+            routeOutline = L.polyline(routeCoordinates, {
+                color: '#000',
+                weight: 12,
+                opacity: 0.4
+            }).addTo(map);
+            
+            // Simulate traffic data
+            // In a real implementation, you would fetch this from a traffic API
+            const simulateTrafficData = () => {
+                // Traffic flow levels: free-flow, slow, queuing, stationary
+                const trafficLevels = ['free-flow', 'slow', 'queuing', 'stationary'];
+                const randomIndex = Math.floor(Math.random() * trafficLevels.length);
+                return trafficLevels[randomIndex];
+            };
+            
+            // Get traffic color based on traffic level
+            const getTrafficColor = (trafficLevel) => {
+                switch(trafficLevel) {
+                    case 'free-flow':
+                        return '#4CAF50'; // Green
+                    case 'slow':
+                        return '#FFC107'; // Amber
+                    case 'queuing':
+                        return '#FF9800'; // Orange
+                    case 'stationary':
+                        return '#F44336'; // Red
+                    default:
+                        return '#800080'; // Purple (default)
+                }
+            };
+            
+            // Get simulated traffic data
+            const trafficLevel = simulateTrafficData();
+            const trafficColor = getTrafficColor(trafficLevel);
+            
+            // Add the route to the map with traffic-based coloring
+            routeLine = L.polyline(routeCoordinates, {
+                color: trafficColor,
+                weight: 8,
+                dashArray: '10, 10',
+                dashOffset: '0'
+            }).addTo(map);
+            
+            // Calculate approximate distance in kilometers
+            const p1 = L.latLng(routeCoordinates[0]);
+            const p2 = L.latLng(routeCoordinates[1]);
+            const distanceInKm = (p1.distanceTo(p2) / 1000).toFixed(1);
+            
+            // Add popup to the middle of the route with traffic info
+            const midPoint = [
+                (originLatLng.lat + destLatLng.lat) / 2,
+                (originLatLng.lng + destLatLng.lng) / 2
+            ];
+            
+            L.popup()
+                .setLatLng(midPoint)
+                .setContent(`
+                    <b>Distance:</b> ${distanceInKm} km<br>
+                    <b>Traffic:</b> <span style="color:${trafficColor}">${trafficLevel.replace('-', ' ')}</span>
+                `)
+                .openOn(map);
+            
+            // Animate the dash pattern for a moving effect
+            let dashOffset = 0;
+            function animateDashArray() {
+                dashOffset = (dashOffset + 1) % 20;
+                routeLine.setStyle({ dashOffset: String(dashOffset) });
+                requestAnimationFrame(animateDashArray);
+            }
+            animateDashArray();
+            
+            // Fit the map to show the entire route
+            const bounds = L.latLngBounds(routeCoordinates);
+            map.fitBounds(bounds, { padding: [50, 50] });
         }
-        animateDashArray();
         
-        // Fit the map to show the entire route
-        const bounds = L.latLngBounds(routeCoordinates);
-        map.fitBounds(bounds, { padding: [50, 50] });
+        // Add traffic flow visualization controls
+        const trafficFlowControl = document.createElement('div');
+        trafficFlowControl.className = 'traffic-flow-control';
+        trafficFlowControl.innerHTML = `
+            <div class="traffic-legend">
+                <h4>Traffic Flow</h4>
+                <div class="flow-item"><span class="flow-color free-flow"></span>Free flow</div>
+                <div class="flow-item"><span class="flow-color slow"></span>Slow</div>
+                <div class="flow-item"><span class="flow-color queuing"></span>Queuing</div>
+                <div class="flow-item"><span class="flow-color stationary"></span>Stationary</div>
+                <div class="flow-item"><span class="flow-color closed"></span>Road closed</div>
+            </div>
+        `;
+        document.querySelector('.map-container').appendChild(trafficFlowControl);
+        
+        // If route points are provided, create the route visualization
+        if (routePoints && routePoints.length > 0) {
+            const firstPoint = routePoints[0];
+            const lastPoint = routePoints[routePoints.length - 1];
+            
+            // Add markers for origin and destination from API response
+            const apiOriginMarker = L.marker([firstPoint.lat, firstPoint.lon], {icon: originIcon})
+                .addTo(map)
+                .bindPopup("Origin")
+                .openPopup();
+            
+            const apiDestinationMarker = L.marker([lastPoint.lat, lastPoint.lon], {icon: destinationIcon})
+                .addTo(map)
+                .bindPopup("Destination");
+            
+            // Create a route line
+            const routeCoordinates = routePoints.map(point => [point.lat, point.lon]);
+            
+            // Add route outline (shadow effect)
+            const apiRouteOutline = L.polyline(routeCoordinates, {
+                color: '#000',
+                weight: 12,
+                opacity: 0.4
+            }).addTo(map);
+            
+            // Add the route to the map with popup showing distance
+            const apiRouteLine = L.polyline(routeCoordinates, {
+                color: '#800080', // Purple
+                weight: 8,
+                dashArray: '10, 10',
+                dashOffset: '0'
+            }).addTo(map);
+            
+            // Calculate approximate distance in kilometers
+            let totalDistance = 0;
+            for (let i = 0; i < routeCoordinates.length - 1; i++) {
+                const p1 = L.latLng(routeCoordinates[i]);
+                const p2 = L.latLng(routeCoordinates[i + 1]);
+                totalDistance += p1.distanceTo(p2);
+            }
+            
+            // Convert to kilometers and round to one decimal place
+            const distanceInKm = (totalDistance / 1000).toFixed(1);
+            
+            // Add popup to the middle of the route
+            const midPointIndex = Math.floor(routeCoordinates.length / 2);
+            const midPoint = routeCoordinates[midPointIndex];
+            L.popup()
+                .setLatLng(midPoint)
+                .setContent(`<b>Distance:</b> ${distanceInKm} km`)
+                .openOn(map);
+            
+            // Animate the dash pattern for a moving effect
+            let dashOffset = 0;
+            function animateDashArray() {
+                dashOffset = (dashOffset + 1) % 20;
+                apiRouteLine.setStyle({ dashOffset: String(dashOffset) });
+                requestAnimationFrame(animateDashArray);
+            }
+            animateDashArray();
+            
+            // Fit the map to show the entire route
+            const bounds = L.latLngBounds(routeCoordinates);
+            map.fitBounds(bounds, { padding: [50, 50] });
+            
+            // Update input fields with the locations
+            if (firstPoint.name) document.getElementById('origin').value = firstPoint.name;
+            if (lastPoint.name) document.getElementById('destination').value = lastPoint.name;
+        }
     }
     
     /**
@@ -386,6 +759,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {HTMLElement} inputElement - The input element to add autocomplete to
      */
     function initializeAutocomplete(inputElement) {
+        // Remove any existing change event listeners to prevent map reinitialization
+        inputElement.onchange = null;
         // List of major Indian cities and locations
         const indianLocations = [
             'Mumbai, Maharashtra', 'Delhi', 'Bangalore, Karnataka', 'Hyderabad, Telangana', 
@@ -444,3 +819,109 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+/**
+ * Function to plan a trip using coordinates selected from the map
+ * @param {L.LatLng} originLatLng - The origin coordinates
+ * @param {L.LatLng} destLatLng - The destination coordinates
+ */
+function planTripWithCoordinates(originLatLng, destLatLng) {
+    console.log('Planning trip with coordinates:', originLatLng, destLatLng);
+    
+    // Show loading state
+    const planTripBtn = document.getElementById('plan-trip-btn');
+    planTripBtn.innerHTML = '<span class="loading-text">Processing...</span>';
+    planTripBtn.disabled = true;
+    planTripBtn.classList.add('loading');
+    
+    // Get the results section
+    const resultsSection = document.getElementById('results');
+    
+    // Make API call to the Python backend with coordinates
+     fetch('http://localhost:5000/api/plan-trip', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            origin: document.getElementById('origin').value,
+            destination: document.getElementById('destination').value,
+            origin_lat: originLatLng.lat,
+            origin_lon: originLatLng.lng,
+            dest_lat: destLatLng.lat,
+            dest_lon: destLatLng.lng
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Update the UI with the results
+        updateResultsFromRouteData(data);
+        
+        // Reset button
+        planTripBtn.innerHTML = 'Plan My Trip';
+        planTripBtn.disabled = false;
+        planTripBtn.classList.remove('loading');
+        
+        // Show the results section
+        resultsSection.style.display = 'block';
+        resultsSection.classList.add('visible');
+    })
+    .catch(error => {
+        console.error('Error planning trip with coordinates:', error);
+        alert('Error planning trip. Please try again.');
+        
+        // Reset button
+        planTripBtn.innerHTML = 'Plan My Trip';
+        planTripBtn.disabled = false;
+        planTripBtn.classList.remove('loading');
+    });
+}
+
+/**
+ * Update results from route data
+ * @param {Object} data - The route data
+ */
+function updateResultsFromRouteData(data) {
+    const bestRouteElement = document.getElementById('best-route');
+    const travelTimeElement = document.getElementById('travel-time');
+    const departureTimeElement = document.getElementById('departure-time');
+    const aiAnalysisElement = document.getElementById('ai-analysis');
+    
+    // Update best route
+    bestRouteElement.textContent = `${document.getElementById('origin').value} to ${document.getElementById('destination').value}`;
+    
+    // Update travel time
+    travelTimeElement.textContent = data.travel_time || 'Not available';
+    
+    // Update departure time (use current time as a placeholder)
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+    departureTimeElement.textContent = `${formattedHours}:${formattedMinutes} ${ampm}`;
+    
+    // Update AI analysis with a placeholder
+    aiAnalysisElement.innerHTML = `
+        <div class="analysis-section">
+            <h4>Traffic Analysis</h4>
+            <p>Based on current traffic conditions, this route has moderate congestion.</p>
+        </div>
+        <div class="analysis-section">
+            <h4>Recommended Departure</h4>
+            <p>For optimal travel time, consider departing now or after 7:00 PM.</p>
+        </div>
+    `;
+    
+    // Update the map with the route points
+    if (data.route_points) {
+        updateMap(data.route_points);
+    }
+}

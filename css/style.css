@@ -291,6 +291,48 @@ label {
     font-size: 0.85rem;
 }
 
+/* Selection Toggle Styles */
+.selection-control {
+    z-index: 1000;
+}
+
+.selection-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.toggle-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.toggle-btn {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.toggle-btn:hover {
+    background-color: #e8e8e8;
+}
+
+.toggle-btn.active {
+    background-color: #800080;
+    color: white;
+    border-color: #600060;
+}
+
 .traffic-legend h4 {
     margin: 0 0 8px 0;
     font-size: 0.9rem;
