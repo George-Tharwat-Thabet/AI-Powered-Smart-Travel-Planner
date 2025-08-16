@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Smart Travel Planner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Smart Travel Planner</h1>
+            <p>Find the best route and optimal departure time for your trip in India</p>
+        </header>
+
+        <section class="input-form">
+            <div class="form-group">
+                <label for="origin">Origin</label>
+                <input type="text" id="origin" placeholder="Enter your starting location">
+            </div>
+            <div class="form-group">
+                <label for="destination">Destination</label>
+                <input type="text" id="destination" placeholder="Enter your destination">
+            </div>
+            <!-- ADDED: New date and time fields -->
+            <div class="form-group">
+                <label for="preferred-date">Preferred Date (Optional)</label>
+                <input type="date" id="preferred-date" placeholder="Select your preferred travel date">
+            </div>
+            <div class="form-group">
+                <label for="preferred-time">Preferred Time (Optional)</label>
+                <input type="time" id="preferred-time" placeholder="Select your preferred departure time">
+            </div>
+            <!-- ADDED: Route preference dropdown -->
+            <div class="form-group route-preference-group">
+                <label for="route-preference">Route Preference</label>
+                <select id="route-preference" class="route-select">
+                    <option value="fastest">Fastest Route (Low Travel Time)</option>
+                    <option value="eco-friendly">Eco-Friendly Route (Low Pollution)</option>
+                    <option value="low-traffic">Low Traffic Route (Avoid Congestion)</option>
+                    <option value="scenic">Scenic Route (Great for Long Trips)</option>
+                </select>
+            </div>
+            <button id="plan-trip-btn" class="gradient-btn">Plan My Trip</button>
+        </section>
+
+        <section class="map-container">
+            <div id="map"></div>
+        </section>
+
+        <section class="results-section" id="results">
+            <h2>Trip Details</h2>
+            <div class="result-card">
+                <h3>Best Route</h3>
+                <p id="best-route">Route details will appear here</p>
+            </div>
+            <div class="result-card">
+                <h3>Optimal Departure Time</h3>
+                <p id="departure-time">Optimal time will appear here</p>
+            </div>
+            <div class="result-card">
+                <h3>Estimated Travel Time</h3>
+                <p id="travel-time">Travel time will appear here</p>
+            </div>
+            <!-- ADDED: New optimal timing card -->
+            <div class="result-card optimal-timing-card">
+                <h3>AI-Recommended Timing</h3>
+                <p id="optimal-timing">Based on your preferences and traffic patterns, the optimal departure suggestions will appear here</p>
+                <div class="timing-alternatives" id="timing-alternatives">
+                    <!-- Alternative timing suggestions will be populated here -->
+                </div>
+            </div>
+            <div class="result-card ai-analysis-card">
+                <h3>AI Analysis</h3>
+                <p id="ai-analysis">Vehicle density analysis at intersections and streets will appear here</p>
+                <div class="density-indicator">
+                    <div class="density-level low"><span></span>Low</div>
+                    <div class="density-level medium"><span></span>Medium</div>
+                    <div class="density-level high"><span></span>High</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
