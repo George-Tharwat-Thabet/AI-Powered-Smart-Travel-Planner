@@ -4,6 +4,23 @@ A web application that helps users find the best route and optimal departure tim
 
 > **[UPDATED]** The AI analysis module has been fully implemented with IBM Watsonx integration for advanced traffic pattern analysis.
 
+## Why This Matters
+
+Urban traffic congestion is not just an inconvenience — it’s a **major economic, environmental, and social challenge**:
+
+- **Economic impact**: In India, commuters lose millions of productive hours each day stuck in traffic, translating into billions of rupees in lost productivity annually.
+- **Environmental costs**: Idling vehicles release significant amounts of greenhouse gases and harmful pollutants, worsening air quality and contributing to climate change.
+- **Social consequences**: Long, stressful commutes reduce quality of life, increase stress levels, and leave less time for family, rest, and well-being.
+
+Our solution leverages the power of **IBM watsonx™ AI** to go beyond traditional maps and estimated travel times. It provides **deeper insights and smarter alternatives** by:
+
+- Suggesting the **optimal departure time** to minimize travel delays
+- Recommending **eco-friendly routes** to reduce carbon emissions
+- Offering **low-traffic routes** for a smoother, stress-free driving experience
+- Highlighting **scenic routes** that turn a commute into an enjoyable journey
+
+The outcome is a **smarter, more sustainable travel experience** that balances efficiency, personal comfort, and environmental responsibility.
+
 ## Features
 
 - User-friendly interface for entering origin and destination locations
